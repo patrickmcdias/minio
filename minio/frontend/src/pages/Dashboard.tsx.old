@@ -1,0 +1,168 @@
+import { useEffect, useState } from "react";
+import api from "../api";
+import { toast } from "sonner";
+import { Folder, File, Trash2, ArrowLeftCircle } from "lucide-react";
+
+export default function Dashboard() {
+  const [buckets, setBuckets] = useState([]);
+  const [selectedBucket, setSelectedBucket] = useState("");
+  const [objects, setObjects] = useState([]);
+  const [currentPath, setCurrentPath] = useState("");
+  const [storageUsage, setStorageUsage] = useState({ used: 0, total: 0 });
+
+  useEffect(() => {
+    api.get("/buckets")
+      .then(({ data }) => setBuckets(data))
+      .catch(() => toast.error("Erro ao carregar buckets"));
+
+    api.get("/storage/usage")
+      .then(({ data }) => setStorageUsage(data))
+      .catch(() => {});
+  }, []);
+
+  const loadObjects = (bucket: string, path = "") => {
+    api.get(`/buckets/${bucket}/objects?prefix=${path}`)
+      .then(({ data }) => {
+        setSelectedBucket(bucket);
+        setObjects(data);
+        setCurrentPath(path);
+      })
+      .catch(() => toast.error("Erro ao carregar objetos"));
+  };
+
+  const goBack = () => {
+    const parts = currentPath.split("/").filter(Boolean);
+    parts.pop();
+    const newPath = parts.length ? parts.join("/") + "/" : "";
+    loadObjects(selectedBucket, newPath);
+  };
+
+  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedBucket) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("path", currentPath);
+
+    api.post(`/buckets/${selectedBucket}/upload`, formData)
+      .then(() => {
+        toast.success("Upload realizado");
+        loadObjects(selectedBucket, currentPath);
+      })
+      .catch(() => toast.error("Erro ao fazer upload"));
+  };
+
+  const handleDelete = (objectPath: string) => {
+    if (!selectedBucket) return;
+
+    api.delete(`/buckets/${selectedBucket}/objects`, { data: { path: objectPath }})
+      .then(() => {
+        toast.success("Objeto excluído");
+        loadObjects(selectedBucket, currentPath);
+      })
+      .catch(() => toast.error("Erro ao excluir objeto"));
+  };
+
+  const handleCreateFolder = () => {
+    const folderName = prompt("Nome da nova pasta:");
+    if (!folderName || !selectedBucket) return;
+
+    api.post(`/buckets/${selectedBucket}/folders`, { path: currentPath, folderName })
+      .then(() => {
+        toast.success("Pasta criada com sucesso");
+        loadObjects(selectedBucket, currentPath);
+      })
+      .catch(() => toast.error("Erro ao criar pasta"));
+  };
+
+  const handleCreateBucket = () => {
+    const bucketName = prompt("Nome do novo bucket:");
+    if (!bucketName) return;
+
+    api.post("/buckets", { name: bucketName })
+      .then(() => {
+        toast.success("Bucket criado com sucesso");
+        api.get("/buckets").then(({ data }) => setBuckets(data));
+      })
+      .catch(() => toast.error("Erro ao criar bucket"));
+  };
+
+  return (
+    <div className="flex min-h-screen bg-gray-50 text-gray-900">
+      <aside className="w-64 p-6 border-r bg-white flex flex-col justify-between">
+        <div>
+          <h2 className="text-xl font-bold mb-4">Seus Buckets</h2>
+          <ul className="space-y-2">
+            {buckets.map((bucket: any) => (
+              <li
+                key={bucket.name}
+                className={`cursor-pointer p-2 rounded ${bucket.name === selectedBucket ? "bg-orange-100" : "hover:bg-gray-100"}`}
+                onClick={() => loadObjects(bucket.name)}
+              >
+                {bucket.name}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="text-sm mt-4">
+          <div className="mb-2">Uso: {storageUsage.used} GB de {storageUsage.total} GB</div>
+          <div className="h-2 bg-gray-200 rounded">
+            <div className="h-full bg-orange-500 rounded" style={{ width: `${(storageUsage.used / storageUsage.total) * 100}%` }}></div>
+          </div>
+          <button onClick={handleCreateBucket} className="mt-4 w-full bg-orange-500 text-white py-2 rounded hover:bg-orange-600">+ Criar Bucket</button>
+        </div>
+      </aside>
+
+      <main className="flex-1 p-8">
+        <h1 className="text-3xl font-semibold mb-6">{selectedBucket || "Selecione um Bucket"}</h1>
+
+        {selectedBucket && (
+          <>
+            <div className="flex gap-2 mb-4">
+              <input type="file" onChange={handleUpload} />
+              <button className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600" onClick={handleCreateFolder}>Criar Pasta</button>
+              {currentPath && (
+                <button className="px-4 py-2 flex items-center gap-2 text-sm text-gray-600 hover:text-black" onClick={goBack}>
+                  <ArrowLeftCircle size={18} /> Voltar
+                </button>
+              )}
+            </div>
+
+            <div className="mb-4 text-sm text-gray-500">Caminho atual: /{currentPath}</div>
+
+            <table className="min-w-full divide-y divide-gray-200 bg-white shadow rounded-lg">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-medium">Nome</th>
+                  <th className="px-6 py-3 text-left text-sm font-medium">Tamanho</th>
+                  <th className="px-6 py-3 text-right text-sm font-medium">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {objects.map((obj: any) => (
+                  <tr key={obj.path}>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`cursor-pointer inline-flex items-center gap-2 ${obj.type === "folder" ? "text-blue-500" : ""}`}
+                        onClick={() => obj.type === "folder" && loadObjects(selectedBucket, obj.path)}
+                      >
+                        {obj.type === "folder" ? <Folder size={16} /> : <File size={16} />} {obj.name}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">{obj.size || "-"}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(obj.path)}>
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
