@@ -1,6 +1,6 @@
-// useBuckets.ts
+// frontend/src/hooks/useBuckets.ts
 import { useState, useEffect } from "react";
-import api from "../api"; // Certifique-se de que o "api" está configurado corretamente para fazer as requisições
+import api from "../api"; // Certifique-se de que o "api" está configurado corretamente
 import { toast } from "sonner";
 
 export function useBuckets() {
@@ -9,7 +9,7 @@ export function useBuckets() {
 
   const fetchBuckets = () => {
     setIsLoadingBuckets(true);
-    api.get("/buckets") // Requisição para listar os buckets
+    api.get("/buckets") // API para listar buckets
       .then(({ data }) => setBuckets(data))
       .catch(() => toast.error("Erro ao carregar buckets"))
       .finally(() => setIsLoadingBuckets(false));
@@ -22,7 +22,7 @@ export function useBuckets() {
   const handleCreateBucket = () => {
     const name = prompt("Nome do novo bucket:");
     if (!name) return;
-    api.post("/buckets", { name }) // Endpoint para criar um novo bucket
+    api.post("/buckets", { name }) // API para criar um novo bucket
       .then(() => {
         toast.success("Bucket criado com sucesso");
         fetchBuckets();
@@ -32,7 +32,7 @@ export function useBuckets() {
 
   const handleDeleteBucket = (name: string) => {
     if (!window.confirm("Tem certeza que deseja excluir este bucket?")) return;
-    api.delete(`/buckets/${name}`) // Endpoint para excluir um bucket
+    api.delete(`/buckets/${name}`) // API para excluir um bucket
       .then(() => {
         toast.success("Bucket excluído");
         fetchBuckets();

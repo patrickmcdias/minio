@@ -1,6 +1,6 @@
-// useObjects.ts
+// frontend/src/hooks/useObjects.ts
 import { useState, useEffect } from "react";
-import api from "../api"; // Certifique-se de que o "api" está configurado corretamente para fazer as requisições
+import api from "../api"; // Certifique-se de que o "api" está configurado corretamente
 import { toast } from "sonner";
 
 export function useObjects(bucketName: string | null) {
@@ -28,7 +28,7 @@ export function useObjects(bucketName: string | null) {
     formData.append("file", file);
     formData.append("path", currentPath);
 
-    return api.post(`/buckets/${bucketName}/objects/upload`, formData) // Endpoint para upload de objetos
+    return api.post(`/buckets/${bucketName}/objects/upload`, formData) // API para upload de objetos
       .then(() => {
         toast.success("Upload realizado");
         loadObjects(currentPath);
@@ -37,8 +37,8 @@ export function useObjects(bucketName: string | null) {
   };
 
   const handleDeleteObject = (path: string) => {
-    if (!bucketName) return;
-    return api.delete(`/buckets/${bucketName}/objects`, { data: { path } }) // Endpoint para exclusão de objetos
+    if (!bucketName || !path) return; // Verifique se o caminho está sendo passado
+    return api.delete(`/buckets/${bucketName}/objects`, { data: { path } }) // API para exclusão de objetos
       .then(() => {
         toast.success("Objeto excluído");
         loadObjects(currentPath);
@@ -49,9 +49,10 @@ export function useObjects(bucketName: string | null) {
   const handleDownloadObject = (path: string) => {
     if (!bucketName) return;
     api({
-      url: `/buckets/${bucketName}/objects/${encodeURIComponent(path)}`,
+      url: `/buckets/${bucketName}/objects/download`,
       method: "GET",
-      responseType: "blob", // Definindo o tipo de resposta como blob para download
+      responseType: "blob",
+      params: { path }, // Envia o caminho do arquivo para download
     })
       .then((response) => {
         const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -71,7 +72,7 @@ export function useObjects(bucketName: string | null) {
     api.post(`/buckets/${bucketName}/objects/folder`, {
       path: currentPath,
       folderName,
-    }) // Endpoint para criação de pastas
+    }) // API para criação de pastas
       .then(() => {
         toast.success("Pasta criada com sucesso");
         loadObjects(currentPath);

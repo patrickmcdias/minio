@@ -1,3 +1,4 @@
+// frontend/src/components/objects/ObjectList.tsx
 import { Button } from "@/components/ui/button";
 import { Folder, File, Trash2, ArrowLeftCircle } from "lucide-react";
 
@@ -55,7 +56,7 @@ const ObjectList: React.FC<ObjectListProps> = ({
             </thead>
             <tbody className="divide-y divide-gray-200">
               {objects.map((obj) => (
-                <tr key={obj.path || obj.name}> {/* Corrigido para chave única */}
+                <tr key={obj.path || obj.name}>
                   <td className="px-6 py-4 flex items-center gap-2">
                     {obj.type === "folder" ? <Folder size={16} /> : <File size={16} />}
                     <span className="truncate">{obj.name}</span>
